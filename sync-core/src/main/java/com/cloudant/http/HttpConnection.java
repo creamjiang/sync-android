@@ -23,6 +23,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.logging.Logger;
 
 /**
  * Created by tomblench on 23/03/15.
@@ -62,6 +63,7 @@ import java.util.LinkedList;
  */
 public class HttpConnection  {
 
+    private static final Logger logger = Logger.getLogger(HttpConnection.class.getCanonicalName());
     private final String requestMethod;
     public final URL url;
     private final String contentType;
@@ -75,14 +77,14 @@ public class HttpConnection  {
 
     public final HashMap<String, String> requestProperties;
 
-    private static final int maxRetries = 10;    
-
     public final LinkedList<HttpConnectionRequestFilter> requestFilters;
     public final LinkedList<HttpConnectionResponseFilter> responseFilters;
 
     //we need to store the response code separately so we don't send a request
     //before we are ready
     private int responseCode = -1;
+
+    private int numberOfRetries = 10;
     
     public HttpConnection(String requestMethod,
                           URL url,
@@ -93,6 +95,14 @@ public class HttpConnection  {
         this.requestProperties = new HashMap<String, String>();
         this.requestFilters = new LinkedList<HttpConnectionRequestFilter>();
         this.responseFilters = new LinkedList<HttpConnectionResponseFilter>();
+    }
+
+    /**
+     * Sets the number of times this request can be retried.
+     * @param numberOfRetries the number of times this request can be retried.
+     */
+    public void setNumberOfRetries(int numberOfRetries){
+        this.numberOfRetries = numberOfRetries;
     }
 
     /**
@@ -147,7 +157,7 @@ public class HttpConnection  {
     public HttpConnection execute() throws IOException {
 
         boolean retry = true;
-        int n = maxRetries;
+        int n = numberOfRetries;
         while (retry && n-- > 0) {
 
             //set the response code to -1 again, to cover retries.
@@ -218,6 +228,9 @@ public class HttpConnection  {
             
             // retry flag is set from the final step in the response filterRequest pipeline
             retry = currentContext.replayRequest;
+        }
+        if(n < 0){
+            logger.info("Maximum number of retries reached");
         }
         // return ourselves to allow method chaining
         return this;
