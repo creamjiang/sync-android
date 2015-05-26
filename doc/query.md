@@ -165,6 +165,11 @@ use these field names.
 Indexing of array fields is supported. See "Array fields" below for the indexing and
 querying semantics.
 
+#### Restrictions
+
+- A dollar sign (`$`) cannot be the first character of any field name.  This is because, when querying, a dollar sign tells the query engine to handle the object as a query operator and not a field.
+- A field with a name that contains a period (`.`) cannot be indexed.  This is because using dot notation tells the query engine to index a sub-object when creating an index.
+
 ### Querying syntax
 
 Query documents are `Map` objects that use the [Cloudant Query `selector`][sel]
