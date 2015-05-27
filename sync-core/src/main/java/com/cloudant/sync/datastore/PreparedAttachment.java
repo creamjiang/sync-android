@@ -32,6 +32,48 @@ import java.util.UUID;
  */
 public class PreparedAttachment {
 
+    // TODO this ctor when the attachment comes from the server
+
+    /**
+     * Prepare an attachment by copying it to a temp location and calculating its sha1.
+     *
+     * @param attachment The attachment to prepare
+     * @param attachmentsDir The 'BLOB store' or location where attachments are stored for this database
+     * @throws AttachmentNotSavedException
+     */
+    public PreparedAttachment(Attachment attachment,
+                              long length,
+                              long encodedLength,
+                              String attachmentsDir) throws AttachmentException {
+        this.attachment = attachment;
+        this.tempFile = new File(attachmentsDir, "temp" + UUID.randomUUID());
+        this.length = length;
+        this.encodedLength = encodedLength;
+        FileInputStream tempFileIS = null;
+        try {
+            FileUtils.copyInputStreamToFile(attachment.getInputStream(), tempFile);
+            long expectedLength;
+            if (this.attachment.encoding == Attachment.Encoding.Plain) {
+                expectedLength = length;
+            } else {
+                expectedLength = encodedLength;
+            }
+            if (this.tempFile.length() != expectedLength) {
+                FileUtils.deleteQuietly(tempFile);
+                // FIXME - message
+                throw new IllegalStateException("Lengths do not match");
+            }
+            this.sha1 = Misc.getSha1((tempFileIS = new FileInputStream(tempFile)));
+        } catch (IOException e) {
+            throw new AttachmentNotSavedException(e);
+        } finally {
+            //ensure the temp file is closed after calculating the hash
+            IOUtils.closeQuietly(tempFileIS);
+        }
+    }
+
+    // TODO this ctor when the attachment comes from the user (so there is no external metadata about the length)
+
     /**
      * Prepare an attachment by copying it to a temp location and calculating its sha1.
      *
@@ -46,6 +88,13 @@ public class PreparedAttachment {
         FileInputStream tempFileIS = null;
         try {
             FileUtils.copyInputStreamToFile(attachment.getInputStream(), tempFile);
+            if (this.attachment.encoding == Attachment.Encoding.Plain) {
+                this.length = tempFile.length();
+                this.encodedLength = 0;
+            } else {
+                this.length = 0; // TODO - what is the unencoded length?
+                this.encodedLength = tempFile.length();
+            }
             this.sha1 = Misc.getSha1((tempFileIS = new FileInputStream(tempFile)));
         } catch (IOException e) {
             throw new AttachmentNotSavedException(e);
@@ -58,5 +107,8 @@ public class PreparedAttachment {
     public final Attachment attachment;
     public final File tempFile;
     public final byte[] sha1;
+    public final long length;
+    public final long encodedLength;
+
 }
 

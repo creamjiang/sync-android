@@ -81,7 +81,7 @@ class AttachmentManager {
         this.attachmentsDir = datastore.extensionDataFolder(EXTENSION_NAME);
     }
 
-    public void addAttachment(SQLDatabase db,PreparedAttachment a, BasicDocumentRevision rev) throws  AttachmentNotSavedException {
+    public void addAttachment(SQLDatabase db, PreparedAttachment a, BasicDocumentRevision rev) throws  AttachmentNotSavedException {
 
         // do it this way to only go thru inputstream once
         // * write to temp location using copyinputstreamtofile
@@ -95,7 +95,8 @@ class AttachmentManager {
         byte[] sha1 = a.sha1;
         String type = a.attachment.type;
         int encoding = a.attachment.encoding.ordinal();
-        long length = a.tempFile.length();
+        long length = a.length;
+        long encodedLength = a.encodedLength;
         long revpos = CouchUtils.generationFromRevId(rev.getRevision());
 
         values.put("sequence", sequence);
@@ -104,7 +105,7 @@ class AttachmentManager {
         values.put("type", type);
         values.put("encoding", encoding);
         values.put("length", length);
-        values.put("encoded_length", length);
+        values.put("encoded_length", encodedLength);
         values.put("revpos", revpos);
 
         // delete and insert in case there is already an attachment at this seq (eg copied over from a previous rev)
@@ -170,6 +171,8 @@ class AttachmentManager {
 
         for (Attachment a : attachments) {
             if (!(a instanceof SavedAttachment)) {
+                // TODO FIXME the attachment will be an unsaved stream/file attachment
+                // so we potentially need to think about what the different lengths will be before/after zipping, amongst other things
                 preparedAndSavedAttachments.preparedAttachments.add(new PreparedAttachment(a, this.attachmentsDir));
             } else {
                 preparedAndSavedAttachments.savedAttachments.add((SavedAttachment)a);
@@ -217,9 +220,20 @@ class AttachmentManager {
                 byte[] key = c.getBlob(2);
                 String type = c.getString(3);
                 int encoding = c.getInt(4);
+                long length = c.getInt(5);
+                long encodedLength = c.getInt(6);
                 int revpos = c.getInt(7);
                 File file = fileFromKey(key);
-                return new SavedAttachment(attachmentName, revpos, sequence, key, type, file, Attachment.Encoding.values()[encoding]);
+                return new SavedAttachment(
+                        attachmentName,
+                        revpos,
+                        sequence,
+                        key,
+                        type,
+                        file,
+                        Attachment.Encoding.values()[encoding],
+                        length,
+                        encodedLength);
             }
 
             return null;
@@ -237,13 +251,24 @@ class AttachmentManager {
             c = db.rawQuery(SQL_ATTACHMENTS_SELECT_ALL,
                     new String[]{String.valueOf(sequence)});
             while (c.moveToNext()) {
-                String name = c.getString(1);
+                String attachmentName = c.getString(1);
                 byte[] key = c.getBlob(2);
                 String type = c.getString(3);
                 int encoding = c.getInt(4);
+                long length = c.getInt(5);
+                long encodedLength = c.getInt(6);
                 int revpos = c.getInt(7);
                 File file = fileFromKey(key);
-                atts.add(new SavedAttachment(name, revpos, sequence, key, type, file, Attachment.Encoding.values()[encoding]));
+                atts.add(new SavedAttachment(
+                        attachmentName,
+                        revpos,
+                        sequence,
+                        key,
+                        type,
+                        file,
+                        Attachment.Encoding.values()[encoding],
+                        length,
+                        encodedLength));
             }
             return atts;
         } catch (SQLException e) {
@@ -261,7 +286,7 @@ class AttachmentManager {
             String type = c.getString(3);
             int encoding = c.getInt(4);
             int length = c.getInt(5);
-            int encoded_length = c.getInt(6);
+            int encodedLength = c.getInt(6);
             int revpos = c.getInt(7);
 
             ContentValues values = new ContentValues();
@@ -271,7 +296,7 @@ class AttachmentManager {
             values.put("type", type);
             values.put("encoding", encoding);
             values.put("length", length);
-            values.put("encoded_length", encoded_length);
+            values.put("encoded_length", encodedLength);
             values.put("revpos", revpos);
             db.insert("attachments", values);
         }

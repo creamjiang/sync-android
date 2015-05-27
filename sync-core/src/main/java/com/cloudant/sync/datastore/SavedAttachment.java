@@ -36,13 +36,23 @@ class SavedAttachment extends Attachment {
     static final int largeSizeBytes = 65536;
     private static final Logger logger = Logger.getLogger(SavedAttachment.class.getCanonicalName());
 
-    protected SavedAttachment(String name, long revpos, long seq, byte[] key, String type, File file, Encoding encoding) {
+    // TODO construct directly from cursor values
+    protected SavedAttachment(String name,
+                              long revpos,
+                              long seq,
+                              byte[] key,
+                              String type,
+                              File file,
+                              Encoding encoding,
+                              long length,
+                              long encodedLength) {
         super(name, type, encoding);
         this.revpos = revpos;
         this.seq = seq;
         this.key = key;
         this.file = file;
-        this.encoding = encoding;
+        this.length = length;
+        this.encodedLength = encodedLength;
     }
 
     public InputStream getInputStream() throws IOException {
@@ -54,7 +64,7 @@ class SavedAttachment extends Attachment {
     }
 
     public boolean isLarge() {
-        return this.getSize() > largeSizeBytes;
+        return this.encodedLength > largeSizeBytes;
     }
 
     public boolean shouldInline(PushAttachmentsInline inlinePreference) {
@@ -68,14 +78,10 @@ class SavedAttachment extends Attachment {
         }
     }
 
-    public long getSize() {
-        return file.length();
-    }
-
     protected final long revpos;
     protected final long seq;
     protected final byte[] key;  // sha of file, used for file path on disk.
+    protected final long length;
+    protected final long encodedLength;
     private final File file;
-    private Encoding encoding;
-
 }

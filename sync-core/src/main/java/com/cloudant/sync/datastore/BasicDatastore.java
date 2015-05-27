@@ -1035,25 +1035,31 @@ class BasicDatastore implements Datastore, DatastoreExtended {
                     if (pullAttachmentsInline) {
                         if (attachments != null) {
                             for (String att : attachments.keySet()) {
-                                Boolean stub = ((Map<String, Boolean>) attachments.get(att)).get
-                                        ("stub");
-                                if (stub != null && stub.booleanValue()) {
+                                Map attachmentMetadata = (Map)attachments.get(att);
+                                Boolean stub = (Boolean) attachmentMetadata.get("stub");
+
+                                if (stub != null && stub) {
                                     // stubs get copied forward at the end of
                                     // insertDocumentHistoryIntoExistingTree - nothing to do here
                                     continue;
                                 }
-                                String data = (String) ((Map<String,
-                                        Object>) attachments.get(att)).get("data");
+                                String data = (String) attachmentMetadata.get("data");
+                                // derive the length in bytes from the base64 encoded string
+                                long length = data.length() / 4 * 3;
+                                if (data.endsWith("==")) {
+                                    length -= 2;
+                                } else if (data.endsWith("=")) {
+                                    length -= 1;
+                                }
+                                String type = (String) attachmentMetadata.get("content_type");
                                 InputStream is = Base64InputStreamFactory.get(new
                                         ByteArrayInputStream(data.getBytes()));
-                                String type = (String) ((Map<String,
-                                        Object>) attachments.get(att)).get("content_type");
                                 // inline attachments are automatically decompressed,
                                 // so we don't have to worry about that
                                 UnsavedStreamAttachment usa = new UnsavedStreamAttachment(is,
                                         att, type);
                                 try {
-                                    PreparedAttachment pa = prepareAttachment(usa);
+                                    PreparedAttachment pa = prepareAttachment(usa, length, 0);
                                     attachmentManager.addAttachment(db, pa, rev);
                                 } catch (Exception e) {
                                     logger.log(Level.SEVERE, "There was a problem adding the " +
@@ -1705,8 +1711,10 @@ class BasicDatastore implements Datastore, DatastoreExtended {
 
 
     @Override
-    public PreparedAttachment prepareAttachment(Attachment att) throws AttachmentException {
-        PreparedAttachment preparedAttachment = new PreparedAttachment(att, this.attachmentManager.attachmentsDir);
+    public PreparedAttachment prepareAttachment(Attachment att,
+                                                long length,
+                                                long encodedLength) throws AttachmentException {
+        PreparedAttachment preparedAttachment = new PreparedAttachment(att, length, encodedLength, this.attachmentManager.attachmentsDir);
         return preparedAttachment;
     }
 
