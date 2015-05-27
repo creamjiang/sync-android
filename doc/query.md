@@ -18,7 +18,7 @@ Cloudant Query uses indexes explicitly defined over the fields in the document. 
 Query offers a powerful way to find documents within your datastore. There are a couple of restrictions on field names you need to be aware of before using query:
 
 - A dollar sign (`$`) cannot be the first character of any field name.  This is because, when querying, a dollar sign tells the query engine to handle the object as a query operator and not a field.
-- A field with a name that contains a period (`.`) cannot be indexed.  This is because using dot notation tells the query engine to index a sub-object when creating an index.
+- A field with a name that contains a period (`.`) cannot be indexed nor successfully queried.  This is because the query engine assumes dot notation refers to a sub-object.
 
 These come from Query's MongoDB heritage where these characters are not allowed in field names, which we don't share. Hopefully we'll work around these restrictions in the future.
 
