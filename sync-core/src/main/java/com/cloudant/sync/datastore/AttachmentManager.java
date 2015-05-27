@@ -14,6 +14,7 @@
 
 package com.cloudant.sync.datastore;
 
+import com.cloudant.sync.datastore.encryption.NullKeyProvider;
 import com.cloudant.sync.sqlite.ContentValues;
 import com.cloudant.sync.sqlite.Cursor;
 import com.cloudant.sync.sqlite.SQLDatabase;
@@ -74,11 +75,14 @@ class AttachmentManager {
 
     public final String attachmentsDir;
 
+    private final AttachmentStreamFactory attachmentStreamFactory;
+
     private BasicDatastore datastore;
 
     public AttachmentManager(BasicDatastore datastore) {
         this.datastore = datastore;
         this.attachmentsDir = datastore.extensionDataFolder(EXTENSION_NAME);
+        this.attachmentStreamFactory = new AttachmentStreamFactory(datastore.getKeyProvider());
     }
 
     public void addAttachment(SQLDatabase db,PreparedAttachment a, BasicDocumentRevision rev) throws  AttachmentNotSavedException {
