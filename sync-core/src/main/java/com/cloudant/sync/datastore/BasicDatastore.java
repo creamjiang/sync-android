@@ -1045,13 +1045,6 @@ class BasicDatastore implements Datastore, DatastoreExtended {
                                     continue;
                                 }
                                 String data = (String) attachmentMetadata.get("data");
-                                // derive the length in bytes from the base64 encoded string
-                                long length = data.length() / 4 * 3;
-                                if (data.endsWith("==")) {
-                                    length -= 2;
-                                } else if (data.endsWith("=")) {
-                                    length -= 1;
-                                }
                                 String type = (String) attachmentMetadata.get("content_type");
                                 InputStream is = Base64InputStreamFactory.get(new
                                         ByteArrayInputStream(data.getBytes()));
@@ -1060,7 +1053,7 @@ class BasicDatastore implements Datastore, DatastoreExtended {
                                 UnsavedStreamAttachment usa = new UnsavedStreamAttachment(is,
                                         att, type);
                                 try {
-                                    PreparedAttachment pa = prepareAttachment(usa, length, 0);
+                                    PreparedAttachment pa = attachmentManager.prepareAttachment(usa);
                                     attachmentManager.addAttachment(db, pa, rev);
                                 } catch (Exception e) {
                                     logger.log(Level.SEVERE, "There was a problem adding the " +
