@@ -240,24 +240,9 @@ class AttachmentManager {
              c = db.rawQuery(SQL_ATTACHMENTS_SELECT,
                      new String[]{attachmentName, String.valueOf(rev.getSequence())});
             if (c.moveToFirst()) {
-                int sequence = c.getInt(0);
-                byte[] key = c.getBlob(2);
-                String type = c.getString(3);
-                int encoding = c.getInt(4);
-                long length = c.getInt(5);
-                long encodedLength = c.getInt(6);
-                int revpos = c.getInt(7);
+                byte[] key = c.getBlob(c.getColumnIndex("key"));
                 File file = fileFromKey(key);
-                return new SavedAttachment(
-                        attachmentName,
-                        revpos,
-                        sequence,
-                        key,
-                        type,
-                        file,
-                        Attachment.Encoding.values()[encoding],
-                        length,
-                        encodedLength);
+                return new SavedAttachment(file, c);
             }
 
             return null;
@@ -275,24 +260,9 @@ class AttachmentManager {
             c = db.rawQuery(SQL_ATTACHMENTS_SELECT_ALL,
                     new String[]{String.valueOf(sequence)});
             while (c.moveToNext()) {
-                String attachmentName = c.getString(1);
-                byte[] key = c.getBlob(2);
-                String type = c.getString(3);
-                int encoding = c.getInt(4);
-                long length = c.getInt(5);
-                long encodedLength = c.getInt(6);
-                int revpos = c.getInt(7);
+                byte[] key = c.getBlob(c.getColumnIndex("key"));
                 File file = fileFromKey(key);
-                atts.add(new SavedAttachment(
-                        attachmentName,
-                        revpos,
-                        sequence,
-                        key,
-                        type,
-                        file,
-                        Attachment.Encoding.values()[encoding],
-                        length,
-                        encodedLength));
+                atts.add(new SavedAttachment(file, c));
             }
             return atts;
         } catch (SQLException e) {
