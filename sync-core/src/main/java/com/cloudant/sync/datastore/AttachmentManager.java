@@ -156,6 +156,31 @@ class AttachmentManager {
         }
     }
 
+    protected PreparedAttachment prepareAttachment(Attachment attachment) throws AttachmentException {
+        if (attachment.encoding != Attachment.Encoding.Plain) {
+            throw new AttachmentNotSavedException("Encoded attachments can only be prepared if the value of \"length\" is known");
+        }
+        return new PreparedAttachment(attachment, this.attachmentsDir, 0);
+    }
+
+    // prepare an attachment and check validity of length and encodedLength metadata
+    protected PreparedAttachment prepareAttachment(Attachment attachment, long length, long encodedLength) throws AttachmentException {
+        PreparedAttachment pa = new PreparedAttachment(attachment, this.attachmentsDir, length);
+        // check the length on disk is correct:
+        // - plain encoding, length on disk is signalled by the "length" metadata property
+        // - all other encodings, length on disk is signalled by the "encoded_length" metadata property
+        if (pa.attachment.encoding == Attachment.Encoding.Plain) {
+            if (pa.length != length) {
+                throw new AttachmentNotSavedException(String.format("Actual length of %d does not equal expected length of %d", pa.length, length));
+            }
+        } else {
+            if (pa.encodedLength != encodedLength) {
+                throw new AttachmentNotSavedException(String.format("Actual encoded length of %d does not equal expected encoded length of %d", pa.encodedLength, pa.length));
+            }
+        }
+        return pa;
+    }
+
     // take a set of attachments, and:
     // * if attachment is saved, add it to the saved list
     // * if attachment is not saved, prepare it, and add it to the prepared list
@@ -171,9 +196,8 @@ class AttachmentManager {
 
         for (Attachment a : attachments) {
             if (!(a instanceof SavedAttachment)) {
-                // TODO FIXME the attachment will be an unsaved stream/file attachment
-                // so we potentially need to think about what the different lengths will be before/after zipping, amongst other things
-                preparedAndSavedAttachments.preparedAttachments.add(new PreparedAttachment(a, this.attachmentsDir));
+                PreparedAttachment pa = this.prepareAttachment(a);
+                preparedAndSavedAttachments.preparedAttachments.add(pa);
             } else {
                 preparedAndSavedAttachments.savedAttachments.add((SavedAttachment)a);
             }
